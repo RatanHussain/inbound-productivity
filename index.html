@@ -1,0 +1,943 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+		<title>Warehouse Inbound Productivity | WH05 Analytics Dashboard</title>
+		<!-- Google Fonts & CSS -->
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+			rel="stylesheet" />
+		<!-- SheetJS (XLSX) -->
+		<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+		<!-- Chart.js -->
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+		<!-- Moment.js for robust date parsing (MM/DD/YYYY) -->
+		<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			.kpi-card {
+				background: #fff;
+				padding: 15px;
+				border-radius: 12px;
+				box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+			}
+
+			.kpi-top {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			.kpi-card {
+				background: #fff;
+				padding: 15px;
+				border-radius: 14px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+				transition: 0.3s;
+			}
+
+			.kpi-card:hover {
+				transform: translateY(-3px);
+			}
+
+			.kpi-top {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.kpi-icon {
+				width: 36px;
+				height: 36px;
+				background: #f4f6f9;
+				padding: 6px;
+				border-radius: 10px;
+			}
+
+			.kpi-label {
+				font-size: 13px;
+				color: #666;
+			}
+
+			.kpi-value {
+				font-size: 24px;
+				font-weight: 700;
+			}
+
+			.kpi-sub {
+				margin-top: 6px;
+				font-size: 12px;
+				color: #999;
+			}
+			.kpi-text {
+				display: flex;
+				flex-direction: column;
+			}
+
+			.kpi-icon {
+				width: 35px;
+				height: 35px;
+			}
+
+			.kpi-label {
+				font-size: 14px;
+				color: #666;
+			}
+
+			.kpi-value {
+				font-size: 24px;
+				font-weight: bold;
+			}
+
+			.kpi-sub {
+				margin-top: 8px;
+				font-size: 12px;
+				color: #999;
+			}
+			body {
+				font-family: 'Inter', sans-serif;
+				background: #f0f2f8;
+				color: #1e293b;
+				padding: 28px 32px;
+			}
+			.dashboard-container {
+				max-width: 1600px;
+				margin: 0 auto;
+			}
+			.filters-panel {
+				background: white;
+				border-radius: 24px;
+				box-shadow:
+					0 8px 20px rgba(0, 0, 0, 0.02),
+					0 2px 6px rgba(0, 0, 0, 0.05);
+				padding: 20px 28px;
+				margin-bottom: 28px;
+			}
+			.filter-title {
+				font-weight: 800;
+				padding-bottom: 20px;
+				font-size: 1.25rem;
+				text-transform: uppercase;
+				letter-spacing: 0.5px;
+				color: #000000;
+				margin-bottom: 12px;
+			}
+			.filter-group {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 24px;
+				align-items: flex-end;
+			}
+			.filter-item {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+				min-width: 180px;
+			}
+			.filter-item label {
+				font-size: 0.75rem;
+				font-weight: 600;
+				color: #2c3e66;
+			}
+			.filter-item select,
+			.filter-item input {
+				padding: 10px 14px;
+				border-radius: 16px;
+				border: 1px solid #e2e8f0;
+				font-family: 'Inter', monospace;
+				font-size: 0.85rem;
+				font-weight: 500;
+				outline: none;
+			}
+			.filter-item select:focus,
+			.filter-item input:focus {
+				border-color: #3b82f6;
+				box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+			}
+			.import-area {
+				display: flex;
+				align-items: center;
+				gap: 15px;
+				margin-left: auto;
+			}
+			.btn-import {
+				background: #1e293b;
+				color: white;
+				border: none;
+				padding: 10px 20px;
+				border-radius: 40px;
+				font-weight: 500;
+				font-size: 0.8rem;
+				cursor: pointer;
+				transition: 0.2s;
+				display: flex;
+				gap: 8px;
+			}
+			.btn-import:hover {
+				background: #0f172a;
+				transform: translateY(-1px);
+			}
+			.file-status {
+				font-size: 0.75rem;
+				color: #3b7c5e;
+				background: #e6f7ef;
+				padding: 6px 14px;
+				border-radius: 40px;
+			}
+			.kpi-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+				gap: 18px;
+				margin-bottom: 32px;
+			}
+			.kpi-card {
+				background: white;
+				border-radius: 28px;
+				padding: 18px 16px;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+				border: 1px solid #edf2f7;
+			}
+			.kpi-label {
+				font-size: 0.7rem;
+				font-weight: 600;
+				text-transform: uppercase;
+				color: #5b6e8c;
+				letter-spacing: 0.4px;
+			}
+			.kpi-value {
+				font-size: 1.9rem;
+				font-weight: 700;
+				margin-top: 8px;
+				color: #0f2b3d;
+				line-height: 1.2;
+			}
+			.kpi-sub {
+				font-size: 0.7rem;
+				color: #6c86a3;
+				margin-top: 6px;
+			}
+			.charts-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 24px;
+				margin-bottom: 32px;
+			}
+			.chart-card {
+				flex: 1;
+				min-width: 280px;
+				background: white;
+				border-radius: 28px;
+				padding: 20px 18px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+				border: 1px solid #eef2f8;
+			}
+			.chart-title {
+				font-weight: 600;
+				margin-bottom: 18px;
+				font-size: 1rem;
+				color: #1e2f44;
+				text-align: center;
+			}
+			canvas {
+				max-height: 260px;
+				width: 100%;
+			}
+			.data-table-wrapper {
+				background: white;
+				border-radius: 28px;
+				padding: 8px 0 4px 0;
+				box-shadow: 0 8px 24px rgba(0, 0, 0, 0.02);
+				border: 1px solid #edf2f7;
+				overflow-x: auto;
+			}
+			.data-table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.75rem;
+				font-family: 'Inter', monospace;
+			}
+			.data-table th {
+				text-align: left;
+				padding: 16px 16px;
+				background-color: #f8fafd;
+				font-weight: 600;
+				color: #1e2a44;
+				border-bottom: 1px solid #e2edf7;
+			}
+			.data-table td {
+				padding: 12px 16px;
+				border-bottom: 1px solid #f0f4fa;
+				color: #1f3a5f;
+			}
+			.data-table tr:hover td {
+				background-color: #fafcff;
+			}
+			footer {
+				margin-top: 20px;
+				text-align: center;
+				font-size: 0.7rem;
+				color: #7e8aa2;
+			}
+			.badge-updated {
+				font-size: 0.65rem;
+				background: #e6f0ff;
+				border-radius: 12px;
+				padding: 2px 8px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="dashboard-container">
+			<!-- FILTER SECTION -->
+			<div class="filters-panel">
+				<div class="filter-title">
+					<img style="width: 1cm" src="warehouse.png" alt="Filter Icon" />
+					<span>Inbound Productivity Dashboard</span>
+				</div>
+				<div class="filter-group">
+					<div class="filter-item">
+						<label>📆 From Date (MM/DD/YYYY)</label
+						><input
+							type="text"
+							id="startDateFilter"
+							placeholder="MM/DD/YYYY"
+							value="04/01/2026" />
+					</div>
+					<div class="filter-item">
+						<label>📆 To Date (MM/DD/YYYY)</label
+						><input
+							type="text"
+							id="endDateFilter"
+							placeholder="MM/DD/YYYY"
+							value="04/10/2026" />
+					</div>
+					<div class="filter-item">
+						<label>🏢 Client</label
+						><select id="clientFilter">
+							<option value="ALL">All Clients</option>
+						</select>
+					</div>
+					<div class="filter-item">
+						<label>📦 Inbound Type</label
+						><select id="typeFilter">
+							<option value="ALL">All Types</option>
+							<option value="INBOUND">INBOUND</option>
+						</select>
+					</div>
+					<div class="import-area">
+						<button class="btn-import" id="uploadExcelBtn">
+							📂 Import Excel (.xlsx)</button
+						><span id="importStatus" class="file-status">No file loaded</span>
+					</div>
+				</div>
+				<div style="font-size: 0.7rem; margin-top: 12px; color: #4a627a">
+					✅ Processing Hours = SHIPMENT_CLOSED_DTE - ASN_CREATED_DATE (in
+					hours) | Date filter uses ASN_CREATED_DATE (MM/DD/YYYY)
+				</div>
+			</div>
+
+			<!-- KPI DASHBOARD -->
+			<div class="kpi-grid" id="kpiContainer">
+				<div class="kpi-card">
+					<div class="kpi-top">
+						<div class="kpi-text">
+							<div class="kpi-label">Unique Clients</div>
+							<div class="kpi-value" id="uniqueClients">0</div>
+						</div>
+						<img
+							src="icons8-client-48.png"
+							alt="client icon"
+							class="kpi-icon" />
+					</div>
+					<div class="kpi-sub">active inbound</div>
+				</div>
+				<div class="kpi-card">
+					<div class="kpi-top">
+						<div>
+							<div class="kpi-label">Total Orders (Shipments)</div>
+							<div class="kpi-value" id="totalOrders">0</div>
+						</div>
+						<img src="icons8-shipment-100.png" class="kpi-icon" />
+					</div>
+					<div class="kpi-sub">unique shipments</div>
+				</div>
+
+				<div class="kpi-card">
+					<div class="kpi-top">
+						<div>
+							<div class="kpi-label">Total Qty (Pieces)</div>
+							<div class="kpi-value" id="totalQty">0</div>
+						</div>
+						<img src="icons8-quantity-64.png" class="kpi-icon" />
+					</div>
+					<div class="kpi-sub">sum of NO_OF_PIECES</div>
+				</div>
+
+				<div class="kpi-card">
+					<div class="kpi-top">
+						<div>
+							<div class="kpi-label">Total Pallets</div>
+							<div class="kpi-value" id="totalPallets">0</div>
+						</div>
+						<img src="icons8-pallet-64.png" class="kpi-icon" />
+					</div>
+					<div class="kpi-sub">pallet sum</div>
+				</div>
+
+				<div class="kpi-card">
+					<div class="kpi-top">
+						<div>
+							<div class="kpi-label">Avg Shipment Processing</div>
+							<div class="kpi-value" id="avgProcTime">0.00</div>
+						</div>
+						<img src="icons8-story-time-48.png" class="kpi-icon" />
+					</div>
+					<div class="kpi-sub">hours (ASN → Closed)</div>
+				</div>
+
+				<div class="kpi-card">
+					<div class="kpi-top">
+						<div>
+							<div class="kpi-label">Productivity / Hour</div>
+							<div class="kpi-value" id="prodHour">0.00</div>
+						</div>
+						<img src="icons8-clock-64.png" class="kpi-icon" />
+					</div>
+					<div class="kpi-sub">pieces per proc-hour</div>
+				</div>
+			</div>
+
+			<!-- CHARTS SECTION: Orders by Client, DN Status, + MONTHLY CHART -->
+			<div class="charts-row">
+				<div class="chart-card">
+					<div class="chart-title">📦 Orders by Client</div>
+					<canvas id="ordersByClientChart" width="400" height="250"></canvas>
+				</div>
+				<div class="chart-card">
+					<div class="chart-title">📋 DN Status (Received vs Pending)</div>
+					<canvas id="statusChart" width="400" height="250"></canvas>
+				</div>
+				<div class="chart-card">
+					<div class="chart-title">📆 Monthly Inbound Volume (Pieces)</div>
+					<canvas id="monthlyChart" width="400" height="250"></canvas>
+				</div>
+			</div>
+
+			<!-- DATA TABLE -->
+			<div class="data-table-wrapper">
+				<table class="data-table" id="dataTable">
+					<thead>
+						<tr>
+							<th>Client</th>
+							<th>Shipment Number</th>
+							<th>ASN Created Date</th>
+							<th>Shipment Closed DTE</th>
+							<th>Item Number</th>
+							<th>Pieces</th>
+							<th>Cases</th>
+							<th>Pallets</th>
+							<th>Processing Hours</th>
+						</tr>
+					</thead>
+					<tbody id="tableBody">
+						<tr>
+							<td colspan="9" style="text-align: center">
+								⬆️ Please import Excel file
+								(WH05_Common_Daily_Inbound_Report...)
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<footer>
+				Processing Hours = (SHIPMENT_CLOSED_DTE - ASN_CREATED_DATE) in hours.
+				Monthly chart aggregates total pieces by month (based on
+				ASN_CREATED_DATE).
+			</footer>
+		</div>
+
+		<script>
+			// ---------- GLOBAL ----------
+			let rawData = [];
+			let filteredData = [];
+			let ordersChart, statusChart, monthlyChart;
+
+			// ---------- HELPER: parse MM/DD/YYYY + HH:MM:SS from combined datetime or separate columns ----------
+			// Excel provides fields: ASN_CREATED_DATE (string like "04/06/2026"), ASN_CREATED_TIME ("08:10:07"), SHIPMENT_CLOSED_DTE (string like "04/07/2026 15:13:46")
+			function parseDateTimeFromFields(dateStr, timeStr) {
+				if (!dateStr) return null;
+				let cleanDate = dateStr.toString().trim();
+				let cleanTime =
+					timeStr && timeStr.toString().trim()
+						? timeStr.toString().trim()
+						: '00:00:00';
+				// moment expects MM/DD/YYYY HH:MM:SS
+				let combined = `${cleanDate} ${cleanTime}`;
+				let m = moment(combined, 'MM/DD/YYYY HH:mm:ss', true);
+				if (m.isValid()) return m.toDate();
+				// try fallback
+				let fallback = moment(cleanDate, 'MM/DD/YYYY', true);
+				if (fallback.isValid()) return fallback.toDate();
+				return null;
+			}
+
+			function parseClosedDateTime(closedStr) {
+				if (!closedStr) return null;
+				let str = closedStr.toString().trim();
+				// format "04/07/2026 15:13:46"
+				let m = moment(str, 'MM/DD/YYYY HH:mm:ss', true);
+				if (m.isValid()) return m.toDate();
+				m = moment(str, 'MM/DD/YYYY', true);
+				return m.isValid() ? m.toDate() : null;
+			}
+
+			// Process Excel rows with correct columns: CLIENT_ID, ASN_CREATED_DATE, ASN_CREATED_TIME, SHIPMENT_CLOSED_DTE, NO_OF_PIECES, NO_OF_PALLETS, etc.
+			function processExcelData(workbook) {
+				const sheet = workbook.Sheets[workbook.SheetNames[0]];
+				const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', header: 1 });
+				if (!rows || rows.length < 2) return [];
+				const headers = rows[0].map((h) =>
+					(h || '').toString().trim().toUpperCase(),
+				);
+
+				const idx = (name) => headers.findIndex((h) => h === name);
+				const clientIdx = idx('CLIENT_ID');
+				const shipmentIdx = idx('INBOUND_SHIPMENT_NUMBER');
+				const asnDateIdx = idx('ASN_CREATED_DATE');
+				const asnTimeIdx = idx('ASN_CREATED_TIME');
+				const closedDteIdx = idx('SHIPMENT_CLOSED_DTE');
+				const itemIdx = idx('ITEM_NUMBER');
+				const piecesIdx = idx('NO_OF_PIECES');
+				const casesIdx = idx('NO_OF_CASES');
+				const palletsIdx = idx('NO_OF_PALLETS');
+				const inboundTypeIdx = idx('INBOUND_TYPE');
+				const receivedDateIdx = idx('RECEIVED_DATE'); // for DN status
+
+				let parsed = [];
+				for (let i = 1; i < rows.length; i++) {
+					const row = rows[i];
+					if (!row || row.length === 0) continue;
+					const client =
+						clientIdx !== -1 && row[clientIdx]
+							? String(row[clientIdx]).trim()
+							: 'Unknown';
+					const shipment =
+						shipmentIdx !== -1 && row[shipmentIdx]
+							? String(row[shipmentIdx]).trim()
+							: '';
+					if (!shipment && client === 'Unknown') continue;
+
+					// ASN datetime
+					let asnDateRaw = asnDateIdx !== -1 ? row[asnDateIdx] : null;
+					let asnTimeRaw = asnTimeIdx !== -1 ? row[asnTimeIdx] : null;
+					let asnDateObj = parseDateTimeFromFields(asnDateRaw, asnTimeRaw);
+
+					// Closed datetime
+					let closedRaw = closedDteIdx !== -1 ? row[closedDteIdx] : null;
+					let closedDateObj = parseClosedDateTime(closedRaw);
+
+					// Processing hours (based on ASN_CREATED_DATE + TIME vs SHIPMENT_CLOSED_DTE)
+					let processingHours = null;
+					if (
+						asnDateObj &&
+						closedDateObj &&
+						!isNaN(asnDateObj) &&
+						!isNaN(closedDateObj)
+					) {
+						let diffMs = closedDateObj - asnDateObj;
+						if (diffMs > 0) processingHours = diffMs / (1000 * 3600);
+						else if (diffMs === 0) processingHours = 0;
+						else processingHours = null; // negative ignore
+					}
+
+					const pieces =
+						piecesIdx !== -1 && row[piecesIdx]
+							? parseFloat(row[piecesIdx]) || 0
+							: 0;
+					const casesVal =
+						casesIdx !== -1 && row[casesIdx]
+							? parseFloat(row[casesIdx]) || 0
+							: 0;
+					const palletsVal =
+						palletsIdx !== -1 && row[palletsIdx]
+							? parseFloat(row[palletsIdx]) || 0
+							: 0;
+					const inboundType =
+						inboundTypeIdx !== -1 && row[inboundTypeIdx]
+							? String(row[inboundTypeIdx]).trim()
+							: 'INBOUND';
+					const receivedDateRaw =
+						receivedDateIdx !== -1 ? row[receivedDateIdx] : null;
+					let isReceived = false;
+					if (receivedDateRaw) {
+						let recDateParsed = parseDateTimeFromFields(
+							receivedDateRaw,
+							'00:00:00',
+						);
+						if (recDateParsed && !isNaN(recDateParsed)) isReceived = true;
+					}
+
+					parsed.push({
+						client,
+						shipmentNumber: shipment,
+						asnDate: asnDateObj,
+						closedDate: closedDateObj,
+						processingHours: processingHours,
+						itemNumber:
+							itemIdx !== -1 && row[itemIdx] ? String(row[itemIdx]).trim() : '',
+						pieces: pieces,
+						cases: casesVal,
+						pallets: palletsVal,
+						inboundType: inboundType,
+						isReceived: isReceived,
+						asnDateRaw: asnDateRaw,
+					});
+				}
+				return parsed.filter((r) => r.shipmentNumber !== '');
+			}
+
+			// update client filter dropdown
+			function updateFilterOptions(data) {
+				const clientSet = new Set();
+				data.forEach((d) => {
+					if (d.client && d.client !== 'Unknown') clientSet.add(d.client);
+				});
+				let clientSelect = document.getElementById('clientFilter');
+				let currentVal = clientSelect.value;
+				clientSelect.innerHTML = '<option value="ALL">All Clients</option>';
+				Array.from(clientSet)
+					.sort()
+					.forEach((c) => {
+						clientSelect.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`;
+					});
+				if (currentVal !== 'ALL' && clientSet.has(currentVal))
+					clientSelect.value = currentVal;
+				else clientSelect.value = 'ALL';
+			}
+
+			function escapeHtml(str) {
+				return String(str).replace(/[&<>]/g, function (m) {
+					if (m === '&') return '&amp;';
+					if (m === '<') return '&lt;';
+					if (m === '>') return '&gt;';
+					return m;
+				});
+			}
+
+			// FILTER: between dates using ASN_CREATED_DATE, client, type
+			function applyFilters() {
+				if (!rawData.length) {
+					filteredData = [];
+					renderDashboard();
+					return;
+				}
+				let startStr = document.getElementById('startDateFilter').value.trim();
+				let endStr = document.getElementById('endDateFilter').value.trim();
+				let clientVal = document.getElementById('clientFilter').value;
+				let typeVal = document.getElementById('typeFilter').value;
+
+				let startMoment = startStr
+					? moment(startStr, 'MM/DD/YYYY', true)
+					: null;
+				let endMoment = endStr ? moment(endStr, 'MM/DD/YYYY', true) : null;
+
+				filteredData = rawData.filter((row) => {
+					let dateMatch = true;
+					if (row.asnDate) {
+						let rowMoment = moment(row.asnDate);
+						if (
+							startMoment &&
+							startMoment.isValid() &&
+							rowMoment.isBefore(startMoment, 'day')
+						)
+							dateMatch = false;
+						if (
+							endMoment &&
+							endMoment.isValid() &&
+							rowMoment.isAfter(endMoment, 'day')
+						)
+							dateMatch = false;
+					} else {
+						dateMatch = false;
+					}
+					let clientMatch = clientVal === 'ALL' || row.client === clientVal;
+					let typeMatch = typeVal === 'ALL' || row.inboundType === typeVal;
+					return dateMatch && clientMatch && typeMatch;
+				});
+				renderDashboard();
+			}
+
+			// render KPIs, Charts & Table
+			function renderDashboard() {
+				if (!filteredData.length) {
+					document.getElementById('uniqueClients').innerText = '0';
+					document.getElementById('totalOrders').innerText = '0';
+					document.getElementById('totalQty').innerText = '0';
+					document.getElementById('totalPallets').innerText = '0';
+					document.getElementById('avgProcTime').innerText = '0.00';
+					document.getElementById('prodHour').innerText = '0.00';
+					document.getElementById('tableBody').innerHTML =
+						'<tr><td colspan="9" style="text-align:center">No data matching filters — upload Excel file</td></tr>';
+					if (ordersChart) ordersChart.data.datasets[0].data = [];
+					ordersChart?.update();
+					if (statusChart) statusChart.data.datasets[0].data = [];
+					statusChart?.update();
+					if (monthlyChart) monthlyChart.data.datasets[0].data = [];
+					monthlyChart?.update();
+					return;
+				}
+
+				// Unique clients
+				let uniqueClients = new Set(filteredData.map((d) => d.client)).size;
+				let shipmentsSet = new Set(filteredData.map((d) => d.shipmentNumber));
+				let totalOrders = shipmentsSet.size;
+				let totalQty = filteredData.reduce(
+					(sum, d) => sum + (isNaN(d.pieces) ? 0 : d.pieces),
+					0,
+				);
+				let totalPallets = filteredData.reduce(
+					(sum, d) => sum + (isNaN(d.pallets) ? 0 : d.pallets),
+					0,
+				);
+
+				// Processing hours (ASN -> Closed)
+				let procHoursArr = filteredData
+					.filter((d) => d.processingHours !== null && d.processingHours >= 0)
+					.map((d) => d.processingHours);
+				let avgProcHours = procHoursArr.length
+					? procHoursArr.reduce((a, b) => a + b, 0) / procHoursArr.length
+					: 0;
+				let totalProcHours = procHoursArr.reduce((a, b) => a + b, 0);
+				let productivityPerHour =
+					totalProcHours > 0 && totalQty > 0 ? totalQty / totalProcHours : 0;
+
+				document.getElementById('uniqueClients').innerText = uniqueClients;
+				document.getElementById('totalOrders').innerText = totalOrders;
+				document.getElementById('totalQty').innerText =
+					totalQty.toLocaleString();
+				document.getElementById('totalPallets').innerText =
+					totalPallets.toFixed(0);
+				document.getElementById('avgProcTime').innerText =
+					avgProcHours.toFixed(2);
+				document.getElementById('prodHour').innerText =
+					productivityPerHour.toFixed(2);
+
+				// Chart 1: Orders by Client (distinct shipments)
+				let clientShipments = new Map();
+				filteredData.forEach((d) => {
+					if (!clientShipments.has(d.client))
+						clientShipments.set(d.client, new Set());
+					clientShipments.get(d.client).add(d.shipmentNumber);
+				});
+				let chartLabels = Array.from(clientShipments.keys());
+				let chartData = chartLabels.map((cl) => clientShipments.get(cl).size);
+				if (ordersChart) {
+					ordersChart.data.labels = chartLabels;
+					ordersChart.data.datasets[0].data = chartData;
+					ordersChart.update();
+				} else {
+					let ctx = document
+						.getElementById('ordersByClientChart')
+						.getContext('2d');
+					ordersChart = new Chart(ctx, {
+						type: 'bar',
+						data: {
+							labels: chartLabels,
+							datasets: [
+								{
+									label: 'Orders (Shipments)',
+									data: chartData,
+									backgroundColor: '#3b82f6',
+									borderRadius: 8,
+								},
+							],
+						},
+						options: { responsive: true, maintainAspectRatio: true },
+					});
+				}
+
+				// Chart 2: DN Status Distribution (isReceived vs not)
+				let receivedCount = filteredData.filter(
+					(d) => d.isReceived === true,
+				).length;
+				let notReceivedCount = filteredData.length - receivedCount;
+				if (statusChart) {
+					statusChart.data.datasets[0].data = [receivedCount, notReceivedCount];
+					statusChart.update();
+				} else {
+					let ctxStat = document.getElementById('statusChart').getContext('2d');
+					statusChart = new Chart(ctxStat, {
+						type: 'doughnut',
+						data: {
+							labels: ['Received Completed', 'Pending / Not Received'],
+							datasets: [
+								{
+									data: [receivedCount, notReceivedCount],
+									backgroundColor: ['#22c55e', '#f97316'],
+									borderWidth: 0,
+								},
+							],
+						},
+						options: {
+							responsive: true,
+							plugins: { legend: { position: 'bottom' } },
+						},
+					});
+				}
+
+				// MONTHLY CHART: Group total pieces by month (based on ASN date)
+				let monthlyMap = new Map(); // key: "YYYY-MM"
+				filteredData.forEach((d) => {
+					if (d.asnDate && !isNaN(d.asnDate) && d.pieces > 0) {
+						let m = moment(d.asnDate);
+						let monthKey = m.format('YYYY-MM');
+						let existing = monthlyMap.get(monthKey) || 0;
+						monthlyMap.set(monthKey, existing + d.pieces);
+					}
+				});
+				let sortedMonths = Array.from(monthlyMap.keys()).sort();
+				let monthlyPieces = sortedMonths.map((m) => monthlyMap.get(m));
+				if (monthlyChart) {
+					monthlyChart.data.labels = sortedMonths;
+					monthlyChart.data.datasets[0].data = monthlyPieces;
+					monthlyChart.update();
+				} else {
+					let ctxMonth = document
+						.getElementById('monthlyChart')
+						.getContext('2d');
+					monthlyChart = new Chart(ctxMonth, {
+						type: 'line',
+						data: {
+							labels: sortedMonths,
+							datasets: [
+								{
+									label: 'Total Pieces Received',
+									data: monthlyPieces,
+									borderColor: '#8b5cf6',
+									backgroundColor: 'rgba(139,92,246,0.1)',
+									fill: true,
+									tension: 0.3,
+									pointBackgroundColor: '#7c3aed',
+								},
+							],
+						},
+						options: {
+							responsive: true,
+							plugins: {
+								tooltip: {
+									callbacks: {
+										label: (ctx) => `${ctx.raw.toLocaleString()} pieces`,
+									},
+								},
+							},
+						},
+					});
+				}
+
+				// Data Table
+				let tbody = document.getElementById('tableBody');
+				tbody.innerHTML = '';
+				let displayRows = filteredData.slice(0, 250);
+				for (let row of displayRows) {
+					let tr = document.createElement('tr');
+					let asnDateStr = row.asnDate
+						? moment(row.asnDate).format('MM/DD/YYYY HH:mm')
+						: '—';
+					let closedStr = row.closedDate
+						? moment(row.closedDate).format('MM/DD/YYYY HH:mm:ss')
+						: '—';
+					let procDisplay =
+						row.processingHours !== null && row.processingHours >= 0
+							? row.processingHours.toFixed(2)
+							: '—';
+					tr.innerHTML = `
+                <td>${escapeHtml(row.client)}</td>
+                <td>${escapeHtml(row.shipmentNumber)}</td>
+                <td>${asnDateStr}</td>
+                <td>${closedStr}</td>
+                <td>${escapeHtml(row.itemNumber.substring(0, 32))}</td>
+                <td>${row.pieces}</td>
+                <td>${row.cases}</td>
+                <td>${row.pallets}</td>
+                <td>${procDisplay}</td>
+            `;
+					tbody.appendChild(tr);
+				}
+				if (displayRows.length === 0)
+					tbody.innerHTML = '<tr><td colspan="9">No matching records</td></tr>';
+			}
+
+			// Excel Upload Handler
+			document
+				.getElementById('uploadExcelBtn')
+				.addEventListener('click', () => {
+					let input = document.createElement('input');
+					input.type = 'file';
+					input.accept = '.xlsx, .xls';
+					input.onchange = (e) => {
+						let file = e.target.files[0];
+						if (!file) return;
+						let reader = new FileReader();
+						reader.onload = function (evt) {
+							let data = new Uint8Array(evt.target.result);
+							let workbook = XLSX.read(data, { type: 'array' });
+							let parsedRows = processExcelData(workbook);
+							if (parsedRows.length === 0) {
+								document.getElementById('importStatus').innerHTML =
+									'⚠️ No valid rows. Check column names.';
+								return;
+							}
+							rawData = parsedRows;
+							updateFilterOptions(rawData);
+							document.getElementById('importStatus').innerHTML =
+								`✅ Loaded ${rawData.length} line items (${new Set(rawData.map((r) => r.shipmentNumber)).size} shipments)`;
+							// default date range covers data present
+							let allDates = rawData
+								.map((r) => r.asnDate)
+								.filter((d) => d && !isNaN(d));
+							if (allDates.length) {
+								let minDate = moment.min(allDates.map((d) => moment(d)));
+								let maxDate = moment.max(allDates.map((d) => moment(d)));
+								if (minDate.isValid())
+									document.getElementById('startDateFilter').value =
+										minDate.format('MM/DD/YYYY');
+								if (maxDate.isValid())
+									document.getElementById('endDateFilter').value =
+										maxDate.format('MM/DD/YYYY');
+							}
+							applyFilters();
+						};
+						reader.readAsArrayBuffer(file);
+					};
+					input.click();
+				});
+
+			// Attach filter event listeners
+			document
+				.getElementById('startDateFilter')
+				.addEventListener('change', () => applyFilters());
+			document
+				.getElementById('endDateFilter')
+				.addEventListener('change', () => applyFilters());
+			document
+				.getElementById('clientFilter')
+				.addEventListener('change', () => applyFilters());
+			document
+				.getElementById('typeFilter')
+				.addEventListener('change', () => applyFilters());
+
+			// initial empty state
+			rawData = [];
+			filteredData = [];
+			renderDashboard();
+		</script>
+	</body>
+</html>
